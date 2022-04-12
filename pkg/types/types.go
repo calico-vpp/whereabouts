@@ -58,6 +58,7 @@ type IPAMConfig struct {
 	ConfigurationPath   string           `json:"configuration_path"`
 	PodName             string
 	PodNamespace        string
+	Network             string `json:"network"`
 }
 
 // IPAMEnvArgs are the environment vars we expect

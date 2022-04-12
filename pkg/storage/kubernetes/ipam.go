@@ -19,6 +19,7 @@ import (
 	"github.com/k8snetworkplumbingwg/whereabouts/pkg/logging"
 	"github.com/k8snetworkplumbingwg/whereabouts/pkg/storage"
 	whereaboutstypes "github.com/k8snetworkplumbingwg/whereabouts/pkg/types"
+	v3 "github.com/projectcalico/api/pkg/apis/projectcalico/v3"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -130,6 +131,30 @@ func (i *KubernetesIPAM) getPool(ctx context.Context, name string, iprange strin
 		return nil, fmt.Errorf("k8s get error: %s", err)
 	}
 	return pool, nil
+}
+
+func (i *KubernetesIPAM) GetNetworkRange(ctx context.Context, networkName string) (string, error) {
+	_, netRange, err := i.getNetworkRange(ctx, networkName)
+	if err != nil {
+		return "", err
+	}
+	return netRange, nil
+}
+
+func (i *KubernetesIPAM) getNetworkRange(ctx context.Context, name string) (*v3.Network, string, error) {
+	net := &v3.Network{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+	}
+	if err := i.client.Get(ctx, types.NamespacedName{Name: name, Namespace: "default"}, net); errors.IsNotFound(err) {
+		logging.Errorf("%+v : Network %s not found", err, name)
+		return nil, "", err
+	} else if err != nil {
+		logging.Errorf("%+v", err)
+		return nil, "", err
+	} else {
+		return net, net.Spec.Range, nil
+	}
+
 }
 
 // Status tests connectivity to the kubernetes backend
@@ -408,6 +433,21 @@ func IPManagementKubernetesUpdate(ctx context.Context, mode int, ipam *Kubernete
 	logging.Debugf("IPManagement -- mode: %v / containerID: %v / podRef: %v", mode, containerID, podRef)
 
 	var newip net.IPNet
+	// if defined by network
+	if ipamConf.Network != "" && ipamConf.Range == "" {
+		netRange, err := ipam.GetNetworkRange(ctx, ipamConf.Network)
+		if err != nil {
+			return newip, err
+		} else {
+			logging.Debugf("using range from network %s definition: %s", ipamConf.Network, netRange)
+			firstip, ipNet, err := net.ParseCIDR(netRange)
+			if err != nil {
+				return newip, err
+			}
+			ipamConf.Range = ipNet.String()
+			ipamConf.RangeStart = firstip
+		}
+	}
 	// Skip invalid modes
 	switch mode {
 	case whereaboutstypes.Allocate, whereaboutstypes.Deallocate:

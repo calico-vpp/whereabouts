@@ -125,13 +125,19 @@ func LoadIPAMConfig(bytes []byte, envArgs string) (*types.IPAMConfig, string, er
 		n.IPAM.RangeEnd = lastip
 	} else {
 		firstip, ipNet, err := net.ParseCIDR(n.IPAM.Range)
-		if err != nil {
-			return nil, "", fmt.Errorf("invalid CIDR %s: %s", n.IPAM.Range, err)
-		}
-		n.IPAM.Range = ipNet.String()
-		if n.IPAM.RangeStart == nil {
-			firstip = net.ParseIP(firstip.Mask(ipNet.Mask).String()) // if range_start is not net then pick the first network address
-			n.IPAM.RangeStart = firstip
+		if n.IPAM.Range != "" && n.IPAM.Network != "" {
+			return nil, "", fmt.Errorf("both range and network cannot be defined")
+		} else if n.IPAM.Range == "" && n.IPAM.Network != "" {
+			// range to be determined afterwards
+		} else {
+			if err != nil {
+				return nil, "", fmt.Errorf("invalid CIDR %s: %s", n.IPAM.Range, err)
+			}
+			n.IPAM.Range = ipNet.String()
+			if n.IPAM.RangeStart == nil {
+				firstip = net.ParseIP(firstip.Mask(ipNet.Mask).String()) // if range_start is not net then pick the first network address
+				n.IPAM.RangeStart = firstip
+			}
 		}
 	}
 

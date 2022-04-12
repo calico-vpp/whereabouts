@@ -47,6 +47,14 @@ rules:
   - pods
   verbs:
   - list
+  # networks crd for multi net
+- apiGroups: ["projectcalico.org"]
+  resources:
+  - networks
+  verbs:
+  - list
+  - get
+  - watch
 ---
 apiVersion: apps/v1
 kind: DaemonSet

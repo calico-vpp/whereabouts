@@ -5,6 +5,7 @@ import (
 	whereaboutsv1alpha1 "github.com/k8snetworkplumbingwg/whereabouts/pkg/api/v1alpha1"
 	"github.com/k8snetworkplumbingwg/whereabouts/pkg/logging"
 	"github.com/k8snetworkplumbingwg/whereabouts/pkg/storage"
+	v3 "github.com/projectcalico/api/pkg/apis/projectcalico/v3"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
@@ -40,6 +41,7 @@ func NewClient(timeout time.Duration) (*Client, error) {
 func NewClientViaKubeconfig(kubeconfigPath string, timeout time.Duration) (*Client, error) {
 	scheme := runtime.NewScheme()
 	_ = whereaboutsv1alpha1.AddToScheme(scheme)
+	_ = v3.AddToScheme(scheme)
 
 	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
